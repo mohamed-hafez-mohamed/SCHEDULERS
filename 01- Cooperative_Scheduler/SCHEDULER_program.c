@@ -257,13 +257,15 @@ void SCHEDULER_voidDispatchTasks(Queue_t * Copy_PtrQueue)
     {
         if(Local_PtrQueueNode->QueueNode_Entry->Task_u8RunMeFlag > 0)
         {
-            Local_PtrQueueNode->QueueNode_Entry->Task_PtrCode(Local_PtrQueueNode->QueueNode_Entry->Task_PtrVoidParameter);        /*!<Run the task */
-            Local_PtrQueueNode->QueueNode_Entry->Task_u8RunMeFlag -= 1;                            /*!<Reset / reduce RunMe flag */
+            /*!<Run the task */
+            Local_PtrQueueNode->QueueNode_Entry->Task_PtrCode(Local_PtrQueueNode->QueueNode_Entry->Task_PtrVoidParameter);  
+            /*!<Reset / reduce RunMe flag */      
+            Local_PtrQueueNode->QueueNode_Entry->Task_u8RunMeFlag -= 1;                            
             /*!<Periodic tasks will automatically run again*/
             /*!<if this is a 'one shot' task, remove it from the array*/
             if(Local_PtrQueueNode->QueueNode_Entry->Task_intPeriod == 0)
             {
-                /*!<The task is ready to run*/
+                /*!<One Shot Task So Delete it*/
                 SCHEDULER_voidDeleteTask(Local_intTaskPosition,Copy_PtrQueue);
             }
         }
