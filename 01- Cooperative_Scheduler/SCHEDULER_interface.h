@@ -54,9 +54,9 @@ typedef void (*ptr_TaskCode)(void *);
 typedef struct
 {
    ptr_TaskCode Task_PtrCode;
-   int          Task_intReleaseTime;
-   int          Task_intPeriod;
-   char         Task_u8RunMeFlag;
+   u16          Task_u16ReleaseTime;
+   u16          Task_u16Period;
+   u8         Task_u8RunMeFlag;
    void    *    Task_PtrVoidParameter;
 }Task_t;
 
@@ -73,7 +73,7 @@ typedef struct Queue
 {
     QueueNode_t * Queue_Front;
     QueueNode_t * Queue_Rear;
-    int           Queue_Size;
+    u16           Queue_Size;
 }Queue_t;
 
 /******************************************************************************
@@ -84,19 +84,19 @@ typedef struct Queue
 * Function Prototypes
 *******************************************************************************/
 
-int  SCHEDULER_intCreateTask(ptr_TaskCode Copy_PtrTaskCode,int Copy_intReleaseTime, int Copy_intPeriod, char Copy_Flag , void * Copy_PtrTaskParameter);
+u16  SCHEDULER_u16CreateTask(ptr_TaskCode Copy_PtrTaskCode,u16 Copy_u16ReleaseTime, u16 Copy_u16Period, u8 Copy_Flag , void * Copy_PtrTaskParameter);
 void SCHEDULER_voidInitScheduler(Queue_t * Copy_PtrQueue);
 void SCHEDULER_voidStartScheduler(void);
-int  SCHEDULER_intAddTask(PtrStructTask_QueueENTRY  Copy_PtrQueueEntry,Queue_t * Copy_PtrQueue);
+u16  SCHEDULER_u16AddTask(PtrStructTask_QueueENTRY  Copy_PtrQueueEntry,Queue_t * Copy_PtrQueue);
 void SCHEDULER_voidUpdateScheduler(void * Copy_voidPtrQueue);
 void SCHEDULER_voidDispatchTasks(Queue_t * Copy_PtrQueue);
 void SCHEDULER_voidServeTask(PtrStructTask_QueueENTRY * Copy_PtrQueueEntry, Queue_t * Copy_PtrQueue);
-void SCHEDULER_voidDeleteTask(int Copy_intTaskPosition,Queue_t * Copy_PtrQueue);
+void SCHEDULER_voidDeleteTask(u16 Copy_u16TaskPosition,Queue_t * Copy_PtrQueue);
 void SCHEDULER_voidServeDleteTask(PtrStructTask_QueueENTRY * Copy_PtrQueueEntry, Queue_t * Copy_PtrQueue);
-void SCHEDULER_voidReplaceTask(int Copy_intTaskPosition, PtrStructTask_QueueENTRY * Copy_PtrQueueEntry, Queue_t * Copy_PtrQueue);
-int  SCHEDULER_intIsQueueEmpty(Queue_t * Copy_PtrQueue);
-int  SCHEDULER_intIsQueueFull(Queue_t * Copy_PtrQueue);
-int  SCHEDULER_intQueueSize(Queue_t * Copy_PtrQueue);
+void SCHEDULER_voidReplaceTask(u16 Copy_u16TaskPosition, PtrStructTask_QueueENTRY * Copy_PtrQueueEntry, Queue_t * Copy_PtrQueue);
+u16  SCHEDULER_u16IsQueueEmpty(Queue_t * Copy_PtrQueue);
+u16  SCHEDULER_u16IsQueueFull(Queue_t * Copy_PtrQueue);
+u16  SCHEDULER_u16QueueSize(Queue_t * Copy_PtrQueue);
 void SCHEDULER_voidClearQueue(Queue_t * Copy_PtrQueue);
 void SCHEDULER_voidTraverseQueue(Queue_t * Copy_PtrQueue, void (*PF)(PtrStructTask_QueueENTRY Copy_QueueEntry));
 

@@ -68,7 +68,7 @@ void SCHEDULER_voidStartScheduler(void)
 	//!<TODO: Enable Global Interrupt
 }
 
-int SCHEDULER_intAddTask(PtrStructTask_QueueENTRY  Copy_PtrQueueEntry,Queue_t * Copy_PtrQueue)
+u16 SCHEDULER_u16AddTask(PtrStructTask_QueueENTRY  Copy_PtrQueueEntry,Queue_t * Copy_PtrQueue)
 {
     QueueNode_t  * Local_PtrQueueNode = (QueueNode_t *)malloc(sizeof(QueueNode_t));
     if(! Local_PtrQueueNode)
@@ -93,15 +93,15 @@ int SCHEDULER_intAddTask(PtrStructTask_QueueENTRY  Copy_PtrQueueEntry,Queue_t * 
     }
 }
 
-int  SCHEDULER_intCreateTask(ptr_TaskCode Copy_PtrTaskCode,int Copy_intReleaseTime, int Copy_intPeriod, char Copy_Flag , void * Copy_PtrTaskParameter)
+u16  SCHEDULER_u16CreateTask(ptr_TaskCode Copy_PtrTaskCode,u16 Copy_u16ReleaseTime, u16 Copy_u16Period, u8 Copy_Flag , void * Copy_PtrTaskParameter)
 {
     PtrStructTask_QueueENTRY Task = (PtrStructTask_QueueENTRY)malloc(sizeof(Task_t));
     Task->Task_PtrCode            = Copy_PtrTaskCode;
-    Task->Task_intReleaseTime     = Copy_intReleaseTime;
-    Task->Task_intPeriod          = Copy_intPeriod;
+    Task->Task_u16ReleaseTime     = Copy_u16ReleaseTime;
+    Task->Task_u16Period          = Copy_u16Period;
     Task->Task_u8RunMeFlag        = Copy_Flag ;
     Task->Task_PtrVoidParameter   = Copy_PtrTaskParameter;
-    SCHEDULER_intAddTask(Task, &ReadyQueue);
+    SCHEDULER_u16AddTask(Task, &ReadyQueue);
 	//!<TODO: Return Status
 }
 
@@ -115,20 +115,20 @@ void SCHEDULER_voidUpdateScheduler(void * Copy_voidPtrQueue)
         /*!<Check if there is a task at this location*/
         if(Local_PtrQueueNode->QueueNode_Entry->Task_PtrCode)
         {
-            if(Local_PtrQueueNode->QueueNode_Entry->Task_intReleaseTime == 0)
+            if(Local_PtrQueueNode->QueueNode_Entry->Task_u16ReleaseTime == 0)
             {
                 /*!<The task is ready to run*/
                Local_PtrQueueNode->QueueNode_Entry->Task_u8RunMeFlag += 1;
-               if(Local_PtrQueueNode->QueueNode_Entry->Task_intPeriod)
+               if(Local_PtrQueueNode->QueueNode_Entry->Task_u16Period)
                {
                     /*!<Schedule periodic tasks to run again*/
-                    Local_PtrQueueNode->QueueNode_Entry->Task_intReleaseTime = Local_PtrQueueNode->QueueNode_Entry->Task_intPeriod;
+                    Local_PtrQueueNode->QueueNode_Entry->Task_u16ReleaseTime = Local_PtrQueueNode->QueueNode_Entry->Task_u16Period;
                }
             }
             else
             {
                 /*!<Not yet ready to run: just decrement the delay*/
-                Local_PtrQueueNode->QueueNode_Entry->Task_intReleaseTime -= 1;
+                Local_PtrQueueNode->QueueNode_Entry->Task_u16ReleaseTime -= 1;
             }
         }
     }
@@ -150,9 +150,9 @@ void SCHEDULER_voidServeDleteTask(PtrStructTask_QueueENTRY * Copy_PtrQueueEntry,
     *Copy_PtrQueueEntry = Local_PtrQueueNode->QueueNode_Entry;
     Copy_PtrQueue->Queue_Front = Local_PtrQueueNode->QueueNode_Next;
 
-    Local_PtrQueueNode->QueueNode_Entry->Task_intPeriod       = 0;
+    Local_PtrQueueNode->QueueNode_Entry->Task_u16Period       = 0;
     Local_PtrQueueNode->QueueNode_Entry->Task_u8RunMeFlag     = 0;
-    Local_PtrQueueNode->QueueNode_Entry->Task_intReleaseTime  = 0;
+    Local_PtrQueueNode->QueueNode_Entry->Task_u16ReleaseTime  = 0;
     free(Local_PtrQueueNode->QueueNode_Entry);
     free(Local_PtrQueueNode);
     if(!Copy_PtrQueue->Queue_Front)
@@ -162,31 +162,31 @@ void SCHEDULER_voidServeDleteTask(PtrStructTask_QueueENTRY * Copy_PtrQueueEntry,
     Copy_PtrQueue->Queue_Size--;
 }
 
-void SCHEDULER_voidDeleteTask(int Copy_intTaskPosition,Queue_t * Copy_PtrQueue)
+void SCHEDULER_voidDeleteTask(u16 Copy_u16TaskPosition,Queue_t * Copy_PtrQueue)
 {
-    int Local_intCounter;
+    u16 Local_u16Counter;
     QueueNode_t * Local_PtrQueueNodeTemp;
     QueueNode_t * Local_PtrQueueNode;
-    if(Copy_intTaskPosition == 0)
+    if(Copy_u16TaskPosition == 0)
     {
         Local_PtrQueueNodeTemp = Copy_PtrQueue->Queue_Front->QueueNode_Next;
-        Copy_PtrQueue->Queue_Front->QueueNode_Entry->Task_intPeriod       = 0;
+        Copy_PtrQueue->Queue_Front->QueueNode_Entry->Task_u16Period       = 0;
         Copy_PtrQueue->Queue_Front->QueueNode_Entry->Task_u8RunMeFlag     = 0;
-        Copy_PtrQueue->Queue_Front->QueueNode_Entry->Task_intReleaseTime  = 0;
+        Copy_PtrQueue->Queue_Front->QueueNode_Entry->Task_u16ReleaseTime  = 0;
         free(Copy_PtrQueue->Queue_Front->QueueNode_Entry);
         free(Copy_PtrQueue->Queue_Front);
         Copy_PtrQueue->Queue_Front = Local_PtrQueueNodeTemp;
     }
     else
     {
-       for(Local_PtrQueueNode = Copy_PtrQueue->Queue_Front,Local_intCounter = 0;Local_intCounter < Copy_intTaskPosition - 1;Local_intCounter++)
+       for(Local_PtrQueueNode = Copy_PtrQueue->Queue_Front,Local_u16Counter = 0;Local_u16Counter < Copy_u16TaskPosition - 1;Local_u16Counter++)
        {
            Local_PtrQueueNode = Local_PtrQueueNode->QueueNode_Next;
        }
        Local_PtrQueueNodeTemp = Local_PtrQueueNode->QueueNode_Next->QueueNode_Next;
-       Local_PtrQueueNode->QueueNode_Next->QueueNode_Entry->Task_intPeriod       = 0;
+       Local_PtrQueueNode->QueueNode_Next->QueueNode_Entry->Task_u16Period       = 0;
        Local_PtrQueueNode->QueueNode_Next->QueueNode_Entry->Task_u8RunMeFlag     = 0;
-       Local_PtrQueueNode->QueueNode_Next->QueueNode_Entry->Task_intReleaseTime  = 0;
+       Local_PtrQueueNode->QueueNode_Next->QueueNode_Entry->Task_u16ReleaseTime  = 0;
        free(Local_PtrQueueNode->QueueNode_Next->QueueNode_Entry);
        free(Local_PtrQueueNode->QueueNode_Next);
        Local_PtrQueueNode->QueueNode_Next = Local_PtrQueueNodeTemp;
@@ -194,17 +194,17 @@ void SCHEDULER_voidDeleteTask(int Copy_intTaskPosition,Queue_t * Copy_PtrQueue)
     Copy_PtrQueue->Queue_Size--;
 }
 
-void SCHEDULER_voidReplaceTask(int Copy_intTaskPosition, PtrStructTask_QueueENTRY * Copy_PtrQueueEntry, Queue_t * Copy_PtrQueue)
+void SCHEDULER_voidReplaceTask(u16 Copy_u16TaskPosition, PtrStructTask_QueueENTRY * Copy_PtrQueueEntry, Queue_t * Copy_PtrQueue)
 {
-    int Local_intCounter;
+    u16 Local_u16Counter;
     QueueNode_t * Local_PtrQueueNode;
-    if(Copy_intTaskPosition == 0)
+    if(Copy_u16TaskPosition == 0)
     {
         Copy_PtrQueue->Queue_Front->QueueNode_Entry = *Copy_PtrQueueEntry;
     }
     else
     {
-        for(Local_PtrQueueNode = Copy_PtrQueue->Queue_Front, Local_intCounter = 0;Local_intCounter < Copy_intTaskPosition;Local_intCounter++)
+        for(Local_PtrQueueNode = Copy_PtrQueue->Queue_Front, Local_u16Counter = 0;Local_u16Counter < Copy_u16TaskPosition;Local_u16Counter++)
        {
            Local_PtrQueueNode = Local_PtrQueueNode->QueueNode_Next;
        }
@@ -213,17 +213,17 @@ void SCHEDULER_voidReplaceTask(int Copy_intTaskPosition, PtrStructTask_QueueENTR
 
 }
 
-int  SCHEDULER_intIsQueueEmpty(Queue_t * Copy_PtrQueue)
+u16  SCHEDULER_u16IsQueueEmpty(Queue_t * Copy_PtrQueue)
 {
     return !Copy_PtrQueue->Queue_Size;
 }
 
-int  SCHEDULER_intIsQueueFull(Queue_t * Copy_PtrQueue)
+u16  SCHEDULER_u16IsQueueFull(Queue_t * Copy_PtrQueue)
 {
     return 0;
 }
 
-int  SCHEDULER_intQueueSize(Queue_t * Copy_PtrQueue)
+u16  SCHEDULER_u16QueueSize(Queue_t * Copy_PtrQueue)
 {
     return Copy_PtrQueue->Queue_Size;
 }
@@ -252,7 +252,7 @@ void SCHEDULER_voidTraverseQueue(Queue_t * Copy_PtrQueue, void (*PF)(PtrStructTa
 void SCHEDULER_voidDispatchTasks(Queue_t * Copy_PtrQueue)
 {
     QueueNode_t *Local_PtrQueueNode;
-    int Local_intTaskPosition = 0;
+    u16 Local_u16TaskPosition = 0;
     for(Local_PtrQueueNode = Copy_PtrQueue -> Queue_Front;Local_PtrQueueNode;Local_PtrQueueNode = Local_PtrQueueNode -> QueueNode_Next)
     {
         if(Local_PtrQueueNode->QueueNode_Entry->Task_u8RunMeFlag > 0)
@@ -263,13 +263,13 @@ void SCHEDULER_voidDispatchTasks(Queue_t * Copy_PtrQueue)
             Local_PtrQueueNode->QueueNode_Entry->Task_u8RunMeFlag -= 1;                            
             /*!<Periodic tasks will automatically run again*/
             /*!<if this is a 'one shot' task, remove it from the array*/
-            if(Local_PtrQueueNode->QueueNode_Entry->Task_intPeriod == 0)
+            if(Local_PtrQueueNode->QueueNode_Entry->Task_u16Period == 0)
             {
                 /*!<One Shot Task So Delete it*/
-                SCHEDULER_voidDeleteTask(Local_intTaskPosition,Copy_PtrQueue);
+                SCHEDULER_voidDeleteTask(Local_u16TaskPosition,Copy_PtrQueue);
             }
         }
-        Local_intTaskPosition++;
+        Local_u16TaskPosition++;
     }
     /*!<Report system status*/
     //SCH_Report_Status();
