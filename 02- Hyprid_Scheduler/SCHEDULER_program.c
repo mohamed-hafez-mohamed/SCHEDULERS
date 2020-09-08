@@ -60,7 +60,7 @@ void SCHEDULER_voidInitScheduler(Queue_t * Copy_PtrQueue)
     Copy_PtrQueue->Queue_Rear  = NULL;
     Copy_PtrQueue->Queue_Size  = 0;
 	//!<TODO: Initialize Timer
-    //!<TODO: Invoke The Function That Will Perform The Update_unction In ISR
+    //!<TODO: Invoke The Function That Will Perform The Update_unction In ISR 
 }
 
 void SCHEDULER_voidStartScheduler(void)
@@ -68,7 +68,7 @@ void SCHEDULER_voidStartScheduler(void)
 	//!<TODO: Enable Global Interrupt
 }
 
-u16 SCHEDULER_u16AddTask(PtrStructTask_QueueENTRY  Copy_PtrQueueEntry,Queue_t * Copy_PtrQueue)
+u8 SCHEDULER_u8AddTask(PtrStructTask_QueueENTRY  Copy_PtrQueueEntry,Queue_t * Copy_PtrQueue)
 {
     QueueNode_t  * Local_PtrQueueNode = (QueueNode_t *)malloc(sizeof(QueueNode_t));
     if(! Local_PtrQueueNode)
@@ -93,56 +93,57 @@ u16 SCHEDULER_u16AddTask(PtrStructTask_QueueENTRY  Copy_PtrQueueEntry,Queue_t * 
     }
 }
 
-u16  SCHEDULER_u16CreateTask(ptr_TaskCode Copy_PtrTaskCode,u16 Copy_u16ReleaseTime, u16 Copy_u16Period, u8 Copy_u8RunFlag , void * Copy_PtrTaskParameter, u8 Copy_u8CoopFlag)
+u8  SCHEDULER_u8CreateTask(u8 Copy_u8Priority, u16 Copy_u16ReleaseTime, u16 Copy_u16Period, u8 Copy_u8CoopFlag, ptr_TaskCode Copy_PtrTaskCode, void * Copy_PtrTaskParameter)
 {
     PtrStructTask_QueueENTRY Task = (PtrStructTask_QueueENTRY)malloc(sizeof(Task_t));
-    Task->Task_PtrCode            = Copy_PtrTaskCode;
+    Task->TASK_u8Priority         = Copy_u8Priority;
     Task->Task_u16ReleaseTime     = Copy_u16ReleaseTime;
     Task->Task_u16Period          = Copy_u16Period;
-    Task->Task_u8RunMeFlag        = Copy_u8RunFlag ;
-    Task->Task_PtrVoidParameter   = Copy_PtrTaskParameter;
+    Task->Task_u8State            = SCHEDULER_TASK_STATE_DORMANT;
     Task->Task_CooperativeFlag    = Copy_u8CoopFlag;
-    SCHEDULER_u16AddTask(Task, &ReadyQueue);
-	//!<TODO: Return Status
+    Task->Task_PtrCode            = Copy_PtrTaskCode;
+    Task->Task_PtrVoidParameter   = Copy_PtrTaskParameter;
+    SCHEDULER_u8AddTask(Task, &ReadyQueue);
+	  //!<TODO: Return Status
 }
 
 /*This function will be invocked inside tin timer overflow ISR*/
 void SCHEDULER_voidUpdateScheduler(void * Copy_voidPtrQueue)
 {
-	  Queue_t * Copy_PtrQueue = (Queue_t *)Copy_voidPtrQueue;
+	Queue_t * Copy_PtrQueue = (Queue_t *)Copy_voidPtrQueue;
     QueueNode_t *Local_PtrQueueNode;
-	  u16 Local_u16TaskPosition = 0;
+    u8 Local_u8TaskPosition = 0;
     for(Local_PtrQueueNode = Copy_PtrQueue -> Queue_Front;Local_PtrQueueNode;Local_PtrQueueNode = Local_PtrQueueNode -> QueueNode_Next)
     {
         /*!<Check if there is a task at this location*/
         if(Local_PtrQueueNode->QueueNode_Entry->Task_PtrCode)
         {
-            if(Local_PtrQueueNode->QueueNode_Entry->Task_u16ReleaseTime == 0)
+            if(Local_PtrQueueNode->QueueNode_Entry->Task_u16ReleaseTime == SCHEDULER_TASK_READY_TO_RUN)
             {
-                /*!<Check The Task, Is it Cooperative or Preemptive*/
+               /*!<Check The Task, Is it Cooperative or Preemptive*/
                 if(Local_PtrQueueNode->QueueNode_Entry->Task_CooperativeFlag)
                 {
                     /*!<The task is ready to run*/
-                    Local_PtrQueueNode->QueueNode_Entry->Task_u8RunMeFlag += 1;
+                    Local_PtrQueueNode->QueueNode_Entry->Task_u8State = SCHEDULER_TASK_STATE_READY_TO_RUN;
                 }
                 else
                 {
-                     /*!<Run the Preemptive Task Immediately */
+                    /*!<Run the Preemptive Task Immediately */
                     Local_PtrQueueNode->QueueNode_Entry->Task_PtrCode(Local_PtrQueueNode->QueueNode_Entry->Task_PtrVoidParameter); 
-                    Local_PtrQueueNode->QueueNode_Entry->Task_u8RunMeFlag -= 1;                            /*!<Reset / reduce RunMe flag */
+                    Local_PtrQueueNode->QueueNode_Entry->Task_u8State = SCHEDULER_TASK_STATE_READY;                                                           
                     /*!<Periodic tasks will automatically run again*/
                     /*!<if this is a 'one shot' task, remove it from the array*/
-                    if(Local_PtrQueueNode->QueueNode_Entry->Task_u16Period == 0)
+                    if(Local_PtrQueueNode->QueueNode_Entry->Task_u16Period == SCHEDULER_ONE_SHOT_TASK)
                     {
-                        /*!<One Shot Task So Delete it*/
-                        SCHEDULER_voidDeleteTask(Local_u16TaskPosition,Copy_PtrQueue);
+                        SCHEDULER_voidDeleteTask(Local_u8TaskPosition,Copy_PtrQueue);
                     }
                 }
-                if(Local_PtrQueueNode->QueueNode_Entry->Task_u16Period)
-                {
+                
+               if(Local_PtrQueueNode->QueueNode_Entry->Task_u16Period)
+               {
                     /*!<Schedule periodic tasks to run again*/
                     Local_PtrQueueNode->QueueNode_Entry->Task_u16ReleaseTime = Local_PtrQueueNode->QueueNode_Entry->Task_u16Period;
-                }
+               }
             }
             else
             {
@@ -150,7 +151,54 @@ void SCHEDULER_voidUpdateScheduler(void * Copy_voidPtrQueue)
                 Local_PtrQueueNode->QueueNode_Entry->Task_u16ReleaseTime -= 1;
             }
         }
-				Local_u16TaskPosition++;
+        Local_u8TaskPosition++;
+    }
+}
+
+void SCHEDULER_voidSuspendTask(u8 Copy_u8TaskPosition,Queue_t * Copy_PtrQueue)
+{
+    u8 Local_u8Counter;
+    QueueNode_t * Local_PtrQueueNode;
+    if(Copy_u8TaskPosition == 0)
+    {
+        Copy_PtrQueue->Queue_Front->QueueNode_Entry->Task_u8State = SCHEDULER_TASK_STATE_SUSPENDED;
+    }
+    else if(Copy_u8TaskPosition > 0)
+    {
+        for(Local_PtrQueueNode = Copy_PtrQueue->Queue_Front,Local_u8Counter = 0;Local_u8Counter < Copy_u8TaskPosition - 1;Local_u8Counter++)
+       {
+           Local_PtrQueueNode = Local_PtrQueueNode->QueueNode_Next;
+       }
+       
+       Local_PtrQueueNode->QueueNode_Next->QueueNode_Entry->Task_u8State = SCHEDULER_TASK_STATE_SUSPENDED;
+    }
+    else
+    {
+        //!<TODO: Error Code
+    }
+
+}
+
+void SCHEDULER_voidResumeTask(u8 Copy_u8TaskPosition,Queue_t * Copy_PtrQueue)
+{
+    u8 Local_u8Counter;
+    QueueNode_t * Local_PtrQueueNode;
+    if(Copy_u8TaskPosition == 0)
+    {
+        Copy_PtrQueue->Queue_Front->QueueNode_Entry->Task_u8State = SCHEDULER_TASK_STATE_READY;
+    }
+    else if(Copy_u8TaskPosition > 0)
+    {
+        for(Local_PtrQueueNode = Copy_PtrQueue->Queue_Front,Local_u8Counter = 0;Local_u8Counter < Copy_u8TaskPosition - 1;Local_u8Counter++)
+       {
+           Local_PtrQueueNode = Local_PtrQueueNode->QueueNode_Next;
+       }
+       
+       Local_PtrQueueNode->QueueNode_Next->QueueNode_Entry->Task_u8State = SCHEDULER_TASK_STATE_READY;
+    }
+    else
+    {
+        //!<TODO: Error Code
     }
 }
 
@@ -169,10 +217,6 @@ void SCHEDULER_voidServeDleteTask(PtrStructTask_QueueENTRY * Copy_PtrQueueEntry,
     QueueNode_t *Local_PtrQueueNode = Copy_PtrQueue->Queue_Front;
     *Copy_PtrQueueEntry = Local_PtrQueueNode->QueueNode_Entry;
     Copy_PtrQueue->Queue_Front = Local_PtrQueueNode->QueueNode_Next;
-
-    Local_PtrQueueNode->QueueNode_Entry->Task_u16Period       = 0;
-    Local_PtrQueueNode->QueueNode_Entry->Task_u8RunMeFlag     = 0;
-    Local_PtrQueueNode->QueueNode_Entry->Task_u16ReleaseTime  = 0;
     free(Local_PtrQueueNode->QueueNode_Entry);
     free(Local_PtrQueueNode);
     if(!Copy_PtrQueue->Queue_Front)
@@ -182,31 +226,25 @@ void SCHEDULER_voidServeDleteTask(PtrStructTask_QueueENTRY * Copy_PtrQueueEntry,
     Copy_PtrQueue->Queue_Size--;
 }
 
-void SCHEDULER_voidDeleteTask(u16 Copy_u16TaskPosition,Queue_t * Copy_PtrQueue)
+void SCHEDULER_voidDeleteTask(u8 Copy_u8TaskPosition,Queue_t * Copy_PtrQueue)
 {
-    u16 Local_u16Counter;
+    u8 Local_u8Counter;
     QueueNode_t * Local_PtrQueueNodeTemp;
     QueueNode_t * Local_PtrQueueNode;
-    if(Copy_u16TaskPosition == 0)
+    if(Copy_u8TaskPosition == 0)
     {
         Local_PtrQueueNodeTemp = Copy_PtrQueue->Queue_Front->QueueNode_Next;
-        Copy_PtrQueue->Queue_Front->QueueNode_Entry->Task_u16Period       = 0;
-        Copy_PtrQueue->Queue_Front->QueueNode_Entry->Task_u8RunMeFlag     = 0;
-        Copy_PtrQueue->Queue_Front->QueueNode_Entry->Task_u16ReleaseTime  = 0;
         free(Copy_PtrQueue->Queue_Front->QueueNode_Entry);
         free(Copy_PtrQueue->Queue_Front);
         Copy_PtrQueue->Queue_Front = Local_PtrQueueNodeTemp;
     }
     else
     {
-       for(Local_PtrQueueNode = Copy_PtrQueue->Queue_Front,Local_u16Counter = 0;Local_u16Counter < Copy_u16TaskPosition - 1;Local_u16Counter++)
+       for(Local_PtrQueueNode = Copy_PtrQueue->Queue_Front,Local_u8Counter = 0;Local_u8Counter < Copy_u8TaskPosition - 1;Local_u8Counter++)
        {
            Local_PtrQueueNode = Local_PtrQueueNode->QueueNode_Next;
        }
        Local_PtrQueueNodeTemp = Local_PtrQueueNode->QueueNode_Next->QueueNode_Next;
-       Local_PtrQueueNode->QueueNode_Next->QueueNode_Entry->Task_u16Period       = 0;
-       Local_PtrQueueNode->QueueNode_Next->QueueNode_Entry->Task_u8RunMeFlag     = 0;
-       Local_PtrQueueNode->QueueNode_Next->QueueNode_Entry->Task_u16ReleaseTime  = 0;
        free(Local_PtrQueueNode->QueueNode_Next->QueueNode_Entry);
        free(Local_PtrQueueNode->QueueNode_Next);
        Local_PtrQueueNode->QueueNode_Next = Local_PtrQueueNodeTemp;
@@ -214,17 +252,17 @@ void SCHEDULER_voidDeleteTask(u16 Copy_u16TaskPosition,Queue_t * Copy_PtrQueue)
     Copy_PtrQueue->Queue_Size--;
 }
 
-void SCHEDULER_voidReplaceTask(u16 Copy_u16TaskPosition, PtrStructTask_QueueENTRY * Copy_PtrQueueEntry, Queue_t * Copy_PtrQueue)
+void SCHEDULER_voidReplaceTask(u8 Copy_u8TaskPosition, PtrStructTask_QueueENTRY * Copy_PtrQueueEntry, Queue_t * Copy_PtrQueue)
 {
-    u16 Local_u16Counter;
+    u8 Local_u8Counter;
     QueueNode_t * Local_PtrQueueNode;
-    if(Copy_u16TaskPosition == 0)
+    if(Copy_u8TaskPosition == 0)
     {
         Copy_PtrQueue->Queue_Front->QueueNode_Entry = *Copy_PtrQueueEntry;
     }
     else
     {
-        for(Local_PtrQueueNode = Copy_PtrQueue->Queue_Front, Local_u16Counter = 0;Local_u16Counter < Copy_u16TaskPosition;Local_u16Counter++)
+        for(Local_PtrQueueNode = Copy_PtrQueue->Queue_Front, Local_u8Counter = 0;Local_u8Counter < Copy_u8TaskPosition;Local_u8Counter++)
        {
            Local_PtrQueueNode = Local_PtrQueueNode->QueueNode_Next;
        }
@@ -233,20 +271,21 @@ void SCHEDULER_voidReplaceTask(u16 Copy_u16TaskPosition, PtrStructTask_QueueENTR
 
 }
 
-u16  SCHEDULER_u16IsQueueEmpty(Queue_t * Copy_PtrQueue)
+u8  SCHEDULER_u8IsQueueEmpty(Queue_t * Copy_PtrQueue)
 {
     return !Copy_PtrQueue->Queue_Size;
 }
 
-u16  SCHEDULER_u16IsQueueFull(Queue_t * Copy_PtrQueue)
+u8  SCHEDULER_u8IsQueueFull(Queue_t * Copy_PtrQueue)
 {
     return 0;
 }
 
-u16  SCHEDULER_u16QueueSize(Queue_t * Copy_PtrQueue)
+u8  SCHEDULER_u8QueueSize(Queue_t * Copy_PtrQueue)
 {
     return Copy_PtrQueue->Queue_Size;
 }
+
 
 void SCHEDULER_voidClearQueue(Queue_t * Copy_PtrQueue)
 {
@@ -272,24 +311,23 @@ void SCHEDULER_voidTraverseQueue(Queue_t * Copy_PtrQueue, void (*PF)(PtrStructTa
 void SCHEDULER_voidDispatchTasks(Queue_t * Copy_PtrQueue)
 {
     QueueNode_t *Local_PtrQueueNode;
-    u16 Local_u16TaskPosition = 0;
+    u8 Local_u8TaskPosition = 0;
     for(Local_PtrQueueNode = Copy_PtrQueue -> Queue_Front;Local_PtrQueueNode;Local_PtrQueueNode = Local_PtrQueueNode -> QueueNode_Next)
     {
-        if(Local_PtrQueueNode->QueueNode_Entry->Task_u8RunMeFlag > 0)
+        if(Local_PtrQueueNode->QueueNode_Entry->Task_u8State == SCHEDULER_TASK_STATE_READY_TO_RUN)
         {
+            Local_PtrQueueNode->QueueNode_Entry->Task_u8State = SCHEDULER_TASK_STATE_RUNNING;
             /*!<Run the task */
-            Local_PtrQueueNode->QueueNode_Entry->Task_PtrCode(Local_PtrQueueNode->QueueNode_Entry->Task_PtrVoidParameter);  
-            /*!<Reset / reduce RunMe flag */      
-            Local_PtrQueueNode->QueueNode_Entry->Task_u8RunMeFlag -= 1;                            
+            Local_PtrQueueNode->QueueNode_Entry->Task_PtrCode(Local_PtrQueueNode->QueueNode_Entry->Task_PtrVoidParameter);        
+            Local_PtrQueueNode->QueueNode_Entry->Task_u8State = SCHEDULER_TASK_STATE_READY;                                                           
             /*!<Periodic tasks will automatically run again*/
             /*!<if this is a 'one shot' task, remove it from the array*/
-            if(Local_PtrQueueNode->QueueNode_Entry->Task_u16Period == 0)
+            if(Local_PtrQueueNode->QueueNode_Entry->Task_u16Period == SCHEDULER_ONE_SHOT_TASK)
             {
-                /*!<One Shot Task So Delete it*/
-                SCHEDULER_voidDeleteTask(Local_u16TaskPosition,Copy_PtrQueue);
+                SCHEDULER_voidDeleteTask(Local_u8TaskPosition,Copy_PtrQueue);
             }
         }
-        Local_u16TaskPosition++;
+        Local_u8TaskPosition++;
     }
     /*!<Report system status*/
     //SCH_Report_Status();
