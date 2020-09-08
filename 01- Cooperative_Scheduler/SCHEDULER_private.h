@@ -40,8 +40,10 @@
 * Preprocessor Constants
 *******************************************************************************/
 
-#define SCHEDULER_QUEUENODE_SIZE    8
-#define SCHEDULER_TASKSTRUCT_SIZE   12
+#define SCHEDULER_QUEUENODE_SIZE      8
+#define SCHEDULER_TASKSTRUCT_SIZE     14
+#define SCHEDULER_ONE_SHOT_TASK       0
+#define SCHEDULER_TASK_READY_TO_RUN   0
 
 /******************************************************************************
 * Configuration Constants
